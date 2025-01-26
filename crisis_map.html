@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Crisis en Tiempo Real</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; }
+        #menu { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Mapa de Crisis en Tiempo Real</h1>
+    <div id="menu">
+        <label for="capas">Selecciona una capa:</label>
+        <select id="capas" onchange="cambiarCapa()">
+            <option value="ninguna">Ninguna</option>
+            <option value="capaX">Capa X</option>
+            <option value="capaY">Capa Y</option>
+        </select>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // URL de SheetDB (reemplaza con tu URL)
+        const sheetDbUrl = "https://sheetdb.io/api/v1/i1hg1ygzgsyey";
+
+        // Inicializar el mapa
+        const map = L.map('map').setView([24.806, -107.394], 13);
+
+        // Capa base
+        const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Capas adicionales
+        const capaX = L.layerGroup(); // Capa X
+        const capaY = L.layerGroup(); // Capa Y
+
+        // Función para cargar datos desde SheetDB
+        function cargarDatos() {
+            fetch(sheetDbUrl)
+                .then(response => response.json())
+                .then(data => {
+                    // Limpiar capas anteriores
+                    capaX.clearLayers();
+                    capaY.clearLayers();
+
+                    // Procesar datos y añadir a las capas correspondientes
+                    data.forEach(evento => {
+                        const marcador = L.marker([evento.lat, evento.lng])
+                            .bindPopup(`
+                                <b>${evento.evento}</b><br>
+                                <b>Fecha:</b> ${evento.fecha}<br>
+                                <b>Hora:</b> ${evento.hora}<br>
+                                <b>Despacho:</b> ${evento.despacho}<br>
+                                <b>Operador:</b> ${evento.operador}<br>
+                                ${evento.descripcion}
+                            `);
+
+                        if (evento.capa === "X") {
+                            marcador.addTo(capaX);
+                        } else if (evento.capa === "Y") {
+                            marcador.addTo(capaY);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error cargando los datos:', error));
+        }
+
+        // Función para cambiar la capa visible
+        function cambiarCapa() {
+            const seleccion = document.getElementById('capas').value;
+            map.eachLayer(layer => {
+                if (layer !== baseLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            if (seleccion === "capaX") {
+                map.addLayer(capaX);
+            } else if (seleccion === "capaY") {
+                map.addLayer(capaY);
+            }
+        }
+
+        // Cargar datos iniciales
+        cargarDatos();
+
+        // Actualizar datos cada 60 segundos
+        setInterval(cargarDatos, 60000); // 60000 ms = 60 segundos
+    </script>
+</body>
+</html>
